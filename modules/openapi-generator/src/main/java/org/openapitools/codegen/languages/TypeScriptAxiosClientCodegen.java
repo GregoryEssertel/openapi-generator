@@ -237,12 +237,12 @@ public class TypeScriptAxiosClientCodegen extends AbstractTypeScriptClientCodege
             String javaImport;
             String packageVal;
             if (importVal.startsWith(tsModelPackage)) {
-                javaImport = importVal.substring(tsModelPackage.length + 1);
+                javaImport = importVal.substring(tsModelPackage.length() + 1);
                 packageVal = "./" + javaImport.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase(Locale.ROOT);
             } else {
                 boolean correct = importVal.startsWith("\\@"); // YAML fails when @ is used so it needs to be escaped
                 int indexOfLastSlash = importVal.lastIndexOf("/");
-                if (correct && indexOfLastSlash > 0) { // a slash is used to detect import mappings. Not great.
+                if (correct && indexOfLastSlash > 0) {
                     javaImport = importVal.substring(indexOfLastSlash + 1);
                     packageVal = importVal.substring(1, indexOfLastSlash); // skip the extra \
                 } else {

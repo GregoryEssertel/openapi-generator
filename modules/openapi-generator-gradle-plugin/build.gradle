@@ -10,6 +10,7 @@ plugins {
     id("org.gradle.kotlin.kotlin-dsl") version "2.4.1"
     id("org.jetbrains.kotlin.jvm") version "1.7.10"
     id("signing")
+    id("com.jfrog.artifactory") version "4.16.1"
 }
 
 group = "org.openapitools"
@@ -122,6 +123,23 @@ signing {
 afterEvaluate {
     tasks.named("publishToSonatype").configure {
         dependsOn("check")
+    }
+
+    artifactory {
+      contextUrl = "https://artifactory.strateos.com:443/artifactory"   //The base Artifactory URL if not overridden by the publisher/resolver
+        publish {
+          repository {
+            repoKey = 'gradle-dev-local'
+              username = "${System.getenv('ARTIFACTORY_USERNAME')}"
+              password = "${System.getenv('ARTIFACTORY_PASSWORD')}"
+              maven = true
+              ivy = false
+          }
+          defaults {
+            publications('mavenJava')
+              publishPom = true
+          }
+        }
     }
 
     publishing {

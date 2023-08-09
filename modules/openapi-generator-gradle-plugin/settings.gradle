@@ -1,1 +1,7 @@
+pluginManagement {
+  repositories {
+    maven { url "https://artifactory.strateos.com/artifactory/strateos/" }
+  }
+}
+
 rootProject.name = "openapi-generator-gradle-plugin"

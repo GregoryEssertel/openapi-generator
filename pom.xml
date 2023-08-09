@@ -64,14 +64,18 @@
         <url>https://github.com/openapitools/openapi-generator/issues</url>
     </issueManagement>
     <distributionManagement>
-        <snapshotRepository>
+      <!-- <snapshotRepository>
             <id>ossrh</id>
             <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </snapshotRepository>
         <repository>
             <id>ossrh</id>
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
+      </repository> -->
+      <repository>
+        <id>strateos_maven</id>
+        <url>https://artifactory.strateos.com:443/artifactory/strateos_maven/</url>
+      </repository>
     </distributionManagement>
     <licenses>
         <license>

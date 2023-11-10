@@ -164,6 +164,28 @@ public class TypeScriptAxiosClientCodegen extends AbstractTypeScriptClientCodege
                 .filter(op -> op.hasConsumes)
                 .filter(op -> op.consumes.stream().anyMatch(opc -> opc.values().stream().anyMatch("multipart/form-data"::equals)))
                 .forEach(op -> op.vendorExtensions.putIfAbsent("multipartFormData", true));
+
+        for (Map<String, String> m : objs.getImports()) {
+            String importVal = m.get("import");
+            String javaImport;
+            String packageVal;
+            if (importVal.startsWith(tsModelPackage)) {
+                javaImport = importVal.substring(tsModelPackage.length() + 1);
+                packageVal = "../" + tsModelPackage + "/" + javaImport.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase(Locale.ROOT);
+            } else {
+                boolean correct = importVal.startsWith("\\@"); // YAML fails when @ is used so it needs to be escaped
+                int indexOfLastSlash = importVal.lastIndexOf("/");
+                if (correct && indexOfLastSlash > 0) {
+                    javaImport = importVal.substring(indexOfLastSlash + 1);
+                    packageVal = importVal.substring(1, indexOfLastSlash); // skip the extra \
+                } else {
+                    throw new RuntimeException("importMappins must be following the format '\\@registry/<package-name>/<ClassName>'");
+                }
+            }
+            m.put("tsImport", packageVal);
+            m.put("class", javaImport);
+        }
+
         return objs;
     }
 

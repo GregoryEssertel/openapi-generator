@@ -144,7 +144,10 @@ afterEvaluate {
 
     publishing {
         publications {
-            pluginMaven {
+            mavenJava(MavenPublication) {
+                from components.java
+                artifact sourcesJar
+                artifact javadocJar
                 pom {
                     name = "OpenAPI-Generator Contributors"
                     description = project.description

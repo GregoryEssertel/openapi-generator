@@ -164,6 +164,28 @@ public class TypeScriptAxiosClientCodegen extends AbstractTypeScriptClientCodege
                 .filter(op -> op.hasConsumes)
                 .filter(op -> op.consumes.stream().anyMatch(opc -> opc.values().stream().anyMatch("multipart/form-data"::equals)))
                 .forEach(op -> op.vendorExtensions.putIfAbsent("multipartFormData", true));
+
+        for (Map<String, String> m : objs.getImports()) {
+            String importVal = m.get("import");
+            String javaImport;
+            String packageVal;
+            if (importVal.startsWith(tsModelPackage)) {
+                javaImport = importVal.substring(tsModelPackage.length() + 1);
+                packageVal = "../" + tsModelPackage + "/" + javaImport.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase(Locale.ROOT);
+            } else {
+                boolean correct = importVal.startsWith("\\@"); // YAML fails when @ is used so it needs to be escaped
+                int indexOfLastSlash = importVal.lastIndexOf("/");
+                if (correct && indexOfLastSlash > 0) {
+                    javaImport = importVal.substring(indexOfLastSlash + 1);
+                    packageVal = importVal.substring(1, indexOfLastSlash); // skip the extra \
+                } else {
+                    throw new RuntimeException("importMappins must be following the format '\\@registry/<package-name>/<ClassName>'");
+                }
+            }
+            m.put("tsImport", packageVal);
+            m.put("class", javaImport);
+        }
+
         return objs;
     }
 
@@ -233,11 +255,24 @@ public class TypeScriptAxiosClientCodegen extends AbstractTypeScriptClientCodege
 
         // Apply the model file name to the imports as well
         for (Map<String, String> m : objs.getImports()) {
-            String javaImport = m.get("import").substring(modelPackage.length() + 1);
-            String tsImport = tsModelPackage + "/" + javaImport;
-            m.put("tsImport", tsImport);
+            String importVal = m.get("import");
+            String javaImport;
+            String packageVal;
+            if (importVal.startsWith(tsModelPackage)) {
+                javaImport = importVal.substring(tsModelPackage.length() + 1);
+                packageVal = "./" + javaImport.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase(Locale.ROOT);
+            } else {
+                boolean correct = importVal.startsWith("\\@"); // YAML fails when @ is used so it needs to be escaped
+                int indexOfLastSlash = importVal.lastIndexOf("/");
+                if (correct && indexOfLastSlash > 0) {
+                    javaImport = importVal.substring(indexOfLastSlash + 1);
+                    packageVal = importVal.substring(1, indexOfLastSlash); // skip the extra \
+                } else {
+                    throw new RuntimeException("importMappins must be following the format '\\@registry/<package-name>/<ClassName>'");
+                }
+            }
+            m.put("tsImport", packageVal);
             m.put("class", javaImport);
-            m.put("filename", javaImport.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase(Locale.ROOT));
         }
         return objs;
     }

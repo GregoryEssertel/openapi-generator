@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import static org.openapitools.codegen.utils.StringUtils.escape;
 import static org.openapitools.codegen.utils.StringUtils.underscore;
 
 public class PythonFastAPIServerCodegen extends AbstractPythonCodegen {
@@ -107,6 +108,8 @@ public class PythonFastAPIServerCodegen extends AbstractPythonCodegen {
         typeMapping.put("array", "List");
         typeMapping.put("map", "Dict");
 
+        reservedWords.add("date");
+
         outputFolder = "generated-code" + File.separator + NAME;
         modelTemplateFiles.put("model.mustache", ".py");
         apiTemplateFiles.put("api.mustache", ".py");
@@ -125,6 +128,8 @@ public class PythonFastAPIServerCodegen extends AbstractPythonCodegen {
         cliOptions.add(new CliOption(CodegenConstants.SOURCE_FOLDER, "directory for generated python source code")
                 .defaultValue(DEFAULT_SOURCE_FOLDER));
 
+        typeMapping.put("UUID", "UUID4");
+        importMapping.put("UUID4", "pydantic.UUID4");
     }
 
     @Override
@@ -178,6 +183,12 @@ public class PythonFastAPIServerCodegen extends AbstractPythonCodegen {
         String modelImport;
         if (StringUtils.startsWithAny(name, "import", "from")) {
             modelImport = name;
+        } else if (importMapping.containsKey(name)) {
+            String library = importMapping.get(name);
+            if (library.endsWith("." + name)) {
+                library = library.substring(0, library.length() - name.length() - 1);
+            }
+            modelImport = String.format(Locale.ROOT, "from %s import %s", library, name);
         } else {
             modelImport = "from ";
             if (!"".equals(modelPackage())) {
@@ -252,6 +263,26 @@ public class PythonFastAPIServerCodegen extends AbstractPythonCodegen {
     @Override
     public Map<String, ModelsMap> postProcessAllModels(Map<String, ModelsMap> objs) {
         Map<String, ModelsMap> result = super.postProcessAllModels(objs);
+
+        for (Map.Entry<String, ModelsMap> entry : result.entrySet()) {
+            entry.setValue(postProcessModelsEnum(entry.getValue()));
+            for (ModelMap m : entry.getValue().getModels()) {
+                CodegenModel model = m.getModel();
+                if (model.isEnum) {
+                    for (Map<String, Object> enumVars : (List<Map<String, Object>>) model.getAllowableValues().get("enumVars")) {
+                        if ((Boolean) enumVars.get("isString")) {
+                            model.vendorExtensions.putIfAbsent("x-py-enum-type", "str");
+                            // update `name`, e.g.
+                            enumVars.put("name", toEnumVariableName((String) enumVars.get("value"), "str"));
+                        } else {
+                            model.vendorExtensions.putIfAbsent("x-py-enum-type", "int");
+                            enumVars.put("name", toEnumVariableName((String) enumVars.get("value"), "int"));
+                        }
+                    }
+                }
+            }
+        }
+
         for (Map.Entry<String, ModelsMap> entry : result.entrySet()) {
             for (ModelMap mo : entry.getValue().getModels()) {
                 CodegenModel cm = mo.getModel();
@@ -310,4 +341,66 @@ public class PythonFastAPIServerCodegen extends AbstractPythonCodegen {
 
     @Override
     public String generatorLanguageVersion() { return "3.7"; };
+
+    @Override
+    public boolean isDataTypeString(String dataType) {
+        return "str".equals(dataType);
+    }
+
+    @Override
+    public String toEnumVarName(String name, String datatype) {
+        if ("int".equals(datatype) || "float".equals(datatype)) {
+            return name;
+        } else {
+            return "\'" + name + "\'";
+        }
+    }
+
+    public String toEnumVariableName(String name, String datatype) {
+        if ("int".equals(datatype)) {
+            return "NUMBER_" + name.replace("-", "MINUS_");
+        }
+
+        // remove quote e.g. 'abc' => abc
+        name = name.substring(1, name.length() - 1);
+
+        if (name.length() == 0) {
+            return "EMPTY";
+        }
+
+        if (" ".equals(name)) {
+            return "SPACE";
+        }
+
+        if ("_".equals(name)) {
+            return "UNDERSCORE";
+        }
+
+        if (reservedWords.contains(name)) {
+            name = name.toUpperCase(Locale.ROOT);
+        } else if (((CharSequence) name).chars().anyMatch(character -> specialCharReplacements.containsKey(String.valueOf((char) character)))) {
+            name = underscore(escape(name, specialCharReplacements, Collections.singletonList("_"), "_")).toUpperCase(Locale.ROOT);
+        } else {
+            name = name.toUpperCase(Locale.ROOT);
+        }
+
+        name = name.replace(" ", "_");
+        name = name.replaceFirst("^_", "");
+        name = name.replaceFirst("_$", "");
+
+        if (name.matches("\\d.*")) {
+            name = "ENUM_" + name.toUpperCase(Locale.ROOT);
+        }
+
+        return name;
+    }
+
+    @Override
+    public String escapeReservedWord(String name) {
+        if (this.reservedWordsMappings().containsKey(name)) {
+            return this.reservedWordsMappings().get(name);
+        }
+        return name + "_";
+    }
+
 }

@@ -612,9 +612,6 @@ public abstract class AbstractPythonCodegen extends DefaultCodegen implements Co
         String type = null;
         if (typeMapping.containsKey(openAPIType)) {
             type = typeMapping.get(openAPIType);
-            if (languageSpecificPrimitives.contains(type)) {
-                return type;
-            }
         } else {
             type = toModelName(openAPIType);
         }
